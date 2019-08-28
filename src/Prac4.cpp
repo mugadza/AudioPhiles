@@ -19,7 +19,7 @@
 #include "Prac4.h"
 
 using namespace std;
-
+//write stuff
 int chan = 0;
 bool playing = true; // should be set false when paused
 bool stopped = false; // If set to true, program should close
