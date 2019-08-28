@@ -27,6 +27,17 @@
 #include <math.h>
 #include <pthread.h>
 #include <iostream>
+//tatenda
+// play
+// pause
+// stop
+
+
+/*
+Humphery
+main
+threads
+*/
 
 //Define buttons
 #define PLAY_BUTTON 0// Write your value here
