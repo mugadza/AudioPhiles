@@ -39,11 +39,18 @@ void play_pause_isr(void){
     else{
         //Write code to play
     }
+
     playing = !playing;
 }
 
 void stop_isr(void){
-    
+    if (stopped) {
+        //Write code to end
+    }
+    {
+        //Write code to stop playback
+    }
+     stopped = !stopped;
 }
 
 /*
@@ -53,7 +60,19 @@ int setup_gpio(void){
     //Set up wiring Pi
     wiringPiSetup();
     //setting up the buttons
+    pinMode(STOP_BUTTON, INPUT);
 
+	pullUpDnControl(STOP_BUTTON, PUD_UP);
+	if (wiringPiISR(STOP_BUTTON, INT_EDGE_FALLING,&stop_isr) != 0){
+			printf("registering isr for button %x failed \n", STOP_BUTTON);
+	}
+	
+	pinMode(PLAY_BUTTON, INPUT);
+
+	pullUpDnControl(PLAY_BUTTON, PUD_UP);
+	if (wiringPiISR(PLAY_BUTTON, INT_EDGE_FALLING,&play_pause_isr) != 0){
+			printf("registering isr for button %x failed \n", PLAY_BUTTON);
+	}
     //setting upt the SPI interface
     
     return 0;
