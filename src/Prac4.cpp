@@ -1,7 +1,7 @@
 /*
  * Prac4.cpp
  * 
- * Originall written by Stefan Schröder and Dillion Heald
+ * Originall written by Stefan SchrÃ¶der and Dillion Heald
  * 
  * Adapted for EEE3096S 2019 by Keegan Crankshaw
  * 
@@ -18,39 +18,48 @@
 
 #include "Prac4.h"
 
+
 using namespace std;
-//write stuff
-int chan = 0;
+
 bool playing = true; // should be set false when paused
 bool stopped = false; // If set to true, program should close
 unsigned char buffer[2][BUFFER_SIZE][2];
 int buffer_location = 0;
 bool bufferReading = 0; //using this to switch between column 0 and 1 - the first column
 bool threadReady = false; //using this to finish writing the first column at the start of the song, before the column is played
-
-
+long lastInterruptTime = 0;
 // Configure your interrupts here.
 // Don't forget to use debouncing.
 void play_pause_isr(void){
-    if (playing) {
-        
-        //Write code to pause
+    //Write your logis here
+    long interruptTime = millis();
+    if (interruptTime - lastInterruptTime>200){ 
+        if (playing == true) //Checks if playing
+        {
+            playing = false; // Pause
+			printf("Pause");
+        }
+        else
+        {
+            playing = true; // Play
+	        printf("Play");
+        }
     }
-    else{
-        //Write code to play
-    }
-
-    playing = !playing;
+    lastInterruptTime = interruptTime;
 }
 
 void stop_isr(void){
-    if (stopped) {
-        //Write code to end
+    // Write your logic here
+    
+    long interruptTime = millis();
+
+    if (interruptTime - lastInterruptTime>200)
+	{
+		printf("Stopped");
+		stopped = true;
+
     }
-    {
-        //Write code to stop playback
-    }
-     stopped = !stopped;
+    lastInterruptTime = interruptTime;
 }
 
 /*
@@ -59,21 +68,26 @@ void stop_isr(void){
 int setup_gpio(void){
     //Set up wiring Pi
     wiringPiSetup();
+    
     //setting up the buttons
-    pinMode(STOP_BUTTON, INPUT);
-
-	pullUpDnControl(STOP_BUTTON, PUD_UP);
-	if (wiringPiISR(STOP_BUTTON, INT_EDGE_FALLING,&stop_isr) != 0){
-			printf("registering isr for button %x failed \n", STOP_BUTTON);
-	}
-	
+    
 	pinMode(PLAY_BUTTON, INPUT);
+    pullUpDnControl(PLAY_BUTTON, PUD_UP);
+    
+    pinMode(STOP_BUTTON, INPUT);
+    pullUpDnControl(STOP_BUTTON, PUD_UP);
+    
+    //setting up the SPI interface
+    
+    if (wiringPiISR(PLAY_BUTTON, INT_EDGE_FALLING, &play_pause_isr) != 0){
+        printf("registering isr for play button failed.");
+    }
 
-	pullUpDnControl(PLAY_BUTTON, PUD_UP);
-	if (wiringPiISR(PLAY_BUTTON, INT_EDGE_FALLING,&play_pause_isr) != 0){
-			printf("registering isr for button %x failed \n", PLAY_BUTTON);
-	}
-    //setting upt the SPI interface
+    if (wiringPiISR(STOP_BUTTON, INT_EDGE_FALLING, &stop_isr) != 0){
+        printf("registering isr for stop button failed.");
+    }
+
+	wiringPiSPISetup (SPI_CHAN, SPI_SPEED) ;
     
     return 0;
 }
@@ -93,12 +107,16 @@ void *playThread(void *threadargs){
     
     //You need to only be playing if the stopped flag is false
     while(!stopped){
-        //Code to suspend playing if paused
-        
-        //Write the buffer out to SPI
-        
-        //Do some maths to check if you need to toggle buffers
-        
+        if (playing==true){
+            wiringPiSPIDataRW(SPI_CHAN,buffer[bufferReading][buffer_location],2);
+            
+            //Do some maths to check if you need to toggle buffers
+            buffer_location++;
+            if(buffer_location >= BUFFER_SIZE) {
+                buffer_location = 0;
+                bufferReading = !bufferReading; // switches column one it finishes one column
+            }
+        }
     }
     
     pthread_exit(NULL);
@@ -125,9 +143,9 @@ int main(){
     pthread_attr_getschedparam (&tattr, &param); /* safe to get existing scheduling param */
     param.sched_priority = newprio; /* set the priority; others are unchanged */
     pthread_attr_setschedparam (&tattr, &param); /* setting the new scheduling param */
-    pthread_create(&thread_id, &tattr, playThread, (void *)1); /* with new priority specified *
+    pthread_create(&thread_id, &tattr, playThread, (void *)1); /* with new priority specified 
     
-    /*
+    
      * Read from the file, character by character
      * You need to perform two operations for each character read from the file
      * You will require bit shifting
@@ -161,11 +179,15 @@ int main(){
             //waits in here after it has written to a side, and the thread is still reading from the other side
             continue;
         }
+        
+        bufferReading &=0x3ff;
+        bufferReading = (1<<13 | (1<<12) | (bufferReading<<2));
+        
         //Set config bits for first 8 bit packet and OR with upper bits
-        buffer[bufferWriting][counter][0] = ; //TODO
+        buffer[bufferWriting][counter][0] = (0b01110000) | ch>>6; //TODO
         //Set next 8 bit packet
-        buffer[bufferWriting][counter][1] = ; //TODO
-
+        buffer[bufferWriting][counter][1] = ch<<2; //TODO
+        
         counter++;
         if(counter >= BUFFER_SIZE+1){
             if(!threadReady){
