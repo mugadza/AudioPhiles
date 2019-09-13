@@ -55,7 +55,6 @@ void stop_isr(void){
 
     if (interruptTime - lastInterruptTime>200)
 	{
-		printf("Stopped");
 		stopped = true;
 
     }
@@ -108,6 +107,7 @@ void *playThread(void *threadargs){
     //You need to only be playing if the stopped flag is false
     while(!stopped){
         if (playing==true){
+		printf("Play");
             wiringPiSPIDataRW(SPI_CHAN,buffer[bufferReading][buffer_location],2);
             
             //Do some maths to check if you need to toggle buffers
@@ -117,8 +117,11 @@ void *playThread(void *threadargs){
                 bufferReading = !bufferReading; // switches column one it finishes one column
             }
         }
+	else{
+		printf("Paused");
+	}
     }
-    
+    printf("Stopped");
     pthread_exit(NULL);
 }
 
